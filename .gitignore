@@ -1,1 +1,3 @@
 *.pdf
+/bolt*
+__pycache__
