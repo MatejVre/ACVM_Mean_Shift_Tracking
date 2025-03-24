@@ -34,16 +34,49 @@ class MeanShiftTracker():
             patch2 = get_patch(image, (self.x, self.y), (self.patch_w, self.patch_h))[0]
             hist_p = extract_histogram(patch2, 16, self.kernel)
             hist_p_normalized = hist_p / np.sum(hist_p)
-            v = np.sqrt(self.hist_q/(hist_p_normalized + 1e-3))
-            back_p = backproject_histogram(image, v, 16)
-            new_x, new_y = mean_shift(back_p, 11, x_start=self.x, y_start=self.y, N_iterations=1)
-            dx = new_x - self.x
-            dy = new_y - self.y
-            self.x = self.x + dx
-            self.y = self.y + dy
+            v = np.sqrt(self.hist_q/(hist_p_normalized + 1e-7))
+            back_p = backproject_histogram(patch2, v, 16)
+            x = back_p.shape[1]//2
+            y = back_p.shape[0]//2
+            new_x, new_y = mean_shift(back_p, 15, x_start=x, y_start=y, N_iterations=1)
+            self.x += (new_x - x)  
+            self.y += (new_y - y) 
             i += 1
         return(self.x, self.y, self.patch_w, self.patch_h)
+
+def mean_shift3(fun, kernel, x_start=None, y_start=None, N_iterations = 1):
+    height, width = kernel.shape
+    
+    i = 1
+    x = x_start
+    y = y_start
+    x_new = None
+    y_new = None
+    while True:
+
+        x_range = np.arange(-(width // 2), width // 2 + 1)  # Width range
+        y_range = np.arange(-(height // 2), height // 2 + 1)  # Height range
+
+        x_diffs, y_diffs = np.meshgrid(x_range, y_range)  # Create 2D grids
+
+        x_diffs = (x_diffs / (width)) ** 2 # Normalize x distances
+        y_diffs = (y_diffs / (height)) ** 2 # Normalize y distances
+
+        x_range = np.arange(width)
+        y_range = np.arange(height)
+        x_coords, y_coords = np.meshgrid(x_range, y_range)
+
+        x_new = int(x + np.sum(x_diffs * fun) / np.sum(fun))
+        y_new = int(y + np.sum(y_diffs * fun) / np.sum(fun))
         
+        if ((x_new == x) and (y_new == y)) or N_iterations <= i:
+            return x_new, y_new
+        
+        i += 1
+            
+        x = x_new
+        y = y_new
+    
 
 def mean_shift(fun, h, x_start=None, y_start=None, N_iterations = 100):
     width, height = fun.shape
@@ -101,8 +134,8 @@ def mean_shift(fun, h, x_start=None, y_start=None, N_iterations = 100):
         x_coords = np.tile(np.arange(x_min, x_max+1), (h, 1))
         y_coords = np.tile(np.arange(y_min, y_max+1), (h, 1)).T
 
-        x_new = int(round(np.sum(x_coords * -x_diffs * patch) / np.sum(-x_diffs * patch)))
-        y_new = int(round(np.sum(y_coords * -y_diffs * patch) / np.sum(-y_diffs * patch)))
+        x_new = int(round(np.sum(x_coords  * patch) / np.sum(patch)))
+        y_new = int(round(np.sum(y_coords  * patch) / np.sum(patch)))
         
         if (x_new == x) and (y_new == y) or N_iterations <= i:
             return x_new - h, y_new - h
