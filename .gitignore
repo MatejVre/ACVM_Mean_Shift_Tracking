@@ -1,3 +1,4 @@
 *.pdf
 /bolt*
 __pycache__
+vids/
